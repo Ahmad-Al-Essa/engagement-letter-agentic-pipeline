@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# The database is rebuilt from data/schema.sql + data/seed.sql (python data/build_db.py)
+data/sbp.db
+
+# Secrets (none are needed for the local setup — never commit any)
+.env
+
+# Editors / OS
+.vscode/
+.DS_Store
+
+# Trace logs from runs (one file per run). Chosen runs may be committed later for the report/demo.
+runs/
