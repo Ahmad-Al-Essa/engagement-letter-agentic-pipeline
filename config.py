@@ -15,7 +15,10 @@ Smaller machine? Run every role on one model:
 
 import os
 
+from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
+
+load_dotenv()   # reads .env if it exists (only needed for the optional Claude checker)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
@@ -33,6 +36,10 @@ EMBED_MODEL = "embeddinggemma"
 # If set, every role uses this one model instead of the table below.
 SINGLE_MODEL = os.getenv("SINGLE_MODEL")
 
+# Optional: CHECKER=frontier runs the checker's roles on Claude (see pipeline/frontier.py).
+CHECKER = os.getenv("CHECKER", "local")
+CHECKER_ROLES = ["checker", "checker_write", "letter_checker"]
+
 # think = True  -> the model reasons before answering (slower, better judgement)
 # think = False -> answers directly (fast; fine for writing from a fixed memo)
 # Measured 2026-10-03: with thinking ON, writing the scope memo got stuck in a
@@ -46,11 +53,17 @@ ROLES = {
     "checker_write": {"model": JUDGE_MODEL, "think": False, "temperature": 0.0},
     "drafter": {"model": WRITER_MODEL, "think": False, "temperature": 0.3},
     "letter_checker": {"model": JUDGE_MODEL, "think": False, "temperature": 0.0},
+    # The evaluation's letter-quality judge. Always local, so that runs with and
+    # without the Claude checker are scored by the same judge.
+    "judge": {"model": JUDGE_MODEL, "think": False, "temperature": 0.0},
 }
 
 
 def model_for(role):
-    """The model name a role will use (after the SINGLE_MODEL override)."""
+    """The model name a role will use (after the SINGLE_MODEL and CHECKER overrides)."""
+    if CHECKER == "frontier" and role in CHECKER_ROLES:
+        from pipeline.frontier import FRONTIER_MODEL
+        return FRONTIER_MODEL
     if SINGLE_MODEL:
         return SINGLE_MODEL
     return ROLES[role]["model"]
@@ -58,6 +71,9 @@ def model_for(role):
 
 def get_llm(role):
     """Return the chat model for one role, with its thinking switch set."""
+    if CHECKER == "frontier" and role in CHECKER_ROLES:
+        from pipeline.frontier import ClaudeChat
+        return ClaudeChat()
     settings = ROLES[role]
     return ChatOllama(
         model=model_for(role),

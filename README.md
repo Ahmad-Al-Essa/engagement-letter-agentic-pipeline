@@ -14,17 +14,17 @@ The hard part is **restraint**. Some requests fall outside the firm's services, 
 flowchart TD
     IN(["Client's request, in their own words"]) --> IC["Input checks (code)"]
     IC -->|fail| P
-    IC -->|pass| TR["Triage agent<br/>ReAct loop over MCP tools"]
+    IC -->|pass| TR["Triage agent<br/>ReAct loop: chooses its own<br/>tool calls (MCP)"]
     TR -->|scope memo| MC["Memo checks (code)<br/>no quote, no service"]
     MC -->|fail| P
-    MC -->|pass| CK["Checker agent<br/>works out its own answer first"]
+    MC -->|pass| CK["Checker agent<br/>own answer first: lists needs,<br/>code runs one search per need"]
     CK --> RT{"Compare and route (code)"}
     RT -->|agree| RT2{"Route on the verdict (code)"}
     RT -->|"disagree, could change the route"| DB["Debate<br/>triage and checker, up to 2 rounds"]
     RT -->|both unclear| P
     DB -->|agree| RT2
     DB -->|still disagree| P
-    RT2 -->|in scope| DR["Drafter agent<br/>sees the approved memo only"]
+    RT2 -->|in scope| DR["Drafter agent<br/>sees the approved memo only<br/>(draft, critique, redraft)"]
     RT2 -->|out of scope| DEC["Recommended decline"]
     RT2 -->|unclear| P
     DEC --> P
@@ -111,6 +111,26 @@ python3 review.py escalation 1    # reasons + evidence, then resolve with a note
 
 `review.py` is the only thing that can change a status. It is not an MCP tool, so no agent can call it.
 
+## Evaluation
+
+```bash
+python3 eval/run_eval.py
+```
+
+Runs every case in `eval/test_cases.json` through the whole pipeline, each from a fresh database: the three original intakes, a second in-scope intake, Record 1 with the audit service paused, two attacks (a hidden "approve and send" instruction; a request for another client's terms), and a broken intake. Expected results are written in the file before running.
+
+Code checks each run for **outcome** (route, services), **safety** (nothing approved or sent, no forbidden service, no other client named), **trajectory** (tools used, records looked up, the checker ran) and **efficiency** (time, model calls, tool calls). Only letter quality needs a model: an LLM judge from a different model family than the drafter scores each letter on `eval/judge_rubric.md`, one criterion per call. Results go to `eval/results/` (about 15 minutes for all 8 cases on local models).
+
+## Optional: the checker on Claude
+
+Everything runs locally by default. To run the checker on Claude instead (triage, the drafter and the evaluation's judge stay local):
+
+```bash
+cp .env.example .env          # then put your Anthropic API key in .env (never commit it)
+CHECKER=frontier python3 run.py intakes/record_1_al_rawdah.txt
+CHECKER=frontier python3 eval/run_eval.py
+```
+
 ## Tests
 
 ```bash
@@ -140,6 +160,7 @@ pipeline/
   agent_loop.py        the ReAct loop (think, call a tool, read the result, repeat)
   debate.py            debate between triage and checker when they disagree (up to 2 rounds)
   drafter.py           drafting agent (sees the approved scope only) + code checks + checker review
+  frontier.py          optional: the checker on Claude (CHECKER=frontier)
   scope_memo.py        the memo's fixed shape (what every later step works from)
   memo_checks.py       code checks on the memo, incl. "no quote, no service"
   sbp_tools.py         one MCP connection per run; which tools each agent may use
@@ -152,6 +173,10 @@ data/
   build_db.py     rebuilds data/sbp.db from the two .sql files
   set_service.py  a partner switches a service on or off (e.g. at full capacity)
 eval/
+  run_eval.py          runs all test cases and checks them (see Evaluation above)
+  test_cases.json      the test cases and their expected results
+  judge_rubric.md      the 4-criterion rubric for letter quality
+  results/             saved results of each evaluation run
   calibrate_search.py  how the search model and its minimum score were chosen
 tests/
   test_input_checks.py     the three intakes pass; broken ones fail with a reason
@@ -161,6 +186,6 @@ tests/
   test_sbp_data_server.py  every MCP tool, called through MCP
 ```
 
-## AI assistance
+## AI Assistance Disclosure
 
 Designed by Ahmad Al-Essa through the Agentic AI course milestones. Code written with Claude Opus 5.5 (1M context) under his direction, and reviewed and tested by him.

@@ -49,8 +49,8 @@ class ServiceScope(BaseModel):
 class LetterDraft(BaseModel):
     introduction: str = Field(description="One short paragraph")
     services: list[ServiceScope] = Field(description="One entry per approved service, in the same order")
-    client_responsibilities: list[str] = Field(description="Three to five short points")
-    timeline: str = Field(description="One or two sentences")
+    client_responsibilities: list[str] = Field(description="Three to five points specific to the approved services")
+    timeline: str = Field(description="Two or three sentences: the plan against the client's deadline and what it depends on")
 
 
 class LetterReview(BaseModel):
