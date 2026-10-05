@@ -1,10 +1,15 @@
-"""The ReAct loop shared by every agent that uses tools (triage, checker).
+"""The ReAct loop, used by triage: the one agent that chooses its own tool calls.
 
     think → call a tool → read the result → repeat, until the model stops
     asking for tools (or a safety limit is reached).
 
 Each agent passes in only the tools it is allowed to use. If the model asks
 for any other tool, it gets a refusal instead of a result.
+
+The checker used this loop in an early version, but given the search tool
+freely it reworded the same needs 22 times until something matched. Its
+searches are now made by code, one per need (see checker.py).
+
 Every model turn and every tool call is written to the run's trace log.
 """
 
@@ -20,7 +25,7 @@ MAX_TOOL_ROUNDS = 10   # a safety limit: the loop stops even if the model keeps 
 async def run_tool_loop(agent_name, llm, allowed_names, tools, messages, trace):
     """Run the loop for one agent.
 
-    agent_name     "triage" or "checker" (used in the trace log)
+    agent_name     the agent's name, e.g. "triage" (used in the trace log)
     llm            the agent's chat model
     allowed_names  the tools this agent may call, e.g. ["lookup_client", ...]
     tools          every tool from the MCP server, by name

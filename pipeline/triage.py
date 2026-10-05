@@ -55,7 +55,7 @@ async def run_triage(intake, tools, trace):
 
     messages = [SystemMessage(system_prompt), HumanMessage(intake_message(intake))]
 
-    # Part 1: the ReAct loop (shared with the checker; see agent_loop.py).
+    # Part 1: the ReAct loop (see agent_loop.py).
     tool_log = await run_tool_loop("triage", config.get_llm("triage"), TRIAGE_TOOLS, tools, messages, trace)
 
     # Part 2: the memo, forced into the ScopeMemo shape.
